@@ -21,9 +21,11 @@ for(const relative of allow){
     if(!allow.includes(target))errors.push(`Unshipped document link: ${relative} -> ${link}`);
   }
 }
+let ownRepository=false;
 try{
   const top=execFileSync('git',['rev-parse','--show-toplevel'],{cwd:root,encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();
   if(path.resolve(top).toLowerCase()!==root.toLowerCase())throw Error('Export has no own Git repository');
+  ownRepository=true;
   const tracked=execFileSync('git',['ls-files','-z'],{cwd:root,encoding:'utf8',stdio:['ignore','pipe','ignore']}).split('\0').filter(Boolean);
   for(const file of tracked)if(!allow.includes(file))errors.push(`Unapproved tracked file: ${file}`);
   const staged=execFileSync('git',['diff','--cached','--name-only','--diff-filter=ACMR','-z'],{cwd:root,encoding:'utf8',stdio:['ignore','pipe','ignore']}).split('\0').filter(Boolean);
@@ -34,5 +36,5 @@ try{
     if(stagedText!==diskText)errors.push(`Staged content differs from reviewed file: ${file}`);
     if(file!=='scripts/check-public.mjs'&&secretPatterns.some(pattern=>pattern.test(stagedText)))errors.push(`Potential private staged content: ${file}`);
   }
-}catch{ /* Clean export can be checked before git init. */ }
+}catch{ if(ownRepository)errors.push('Could not verify the Git index; refusing to pass.'); }
 if(errors.length){console.error(errors.join('\n'));process.exitCode=1;}else console.log(`Public boundary passed: ${allow.length} explicit text/code files; document links resolved.`);

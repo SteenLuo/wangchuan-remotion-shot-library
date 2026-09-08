@@ -9,6 +9,7 @@
 !/viewer/app.js
 !/tests/viewer.test.mjs
 !/skills/shot-library-replication/scripts/import-source.mjs
+!/tests/public-tools.test.mjs
 !/README.md
 !/AGENTS.md
 !/docs/replication-workflow.md

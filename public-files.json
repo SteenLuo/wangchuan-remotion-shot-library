@@ -28,6 +28,7 @@
     "skills/shot-library-replication/SKILL.md",
     "skills/shot-library-replication/scripts/import-source.mjs",
     "skills/shot-library-viewer/SKILL.md",
+    "tests/public-tools.test.mjs",
     "tests/viewer.test.mjs",
     "viewer/app.js",
     "viewer/index.html",

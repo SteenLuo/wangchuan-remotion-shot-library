@@ -73,7 +73,7 @@ const sourceRecords = async (projectRoot) => {
   return records;
 };
 
-const usedSequenceIds = async (projectRoot) => {
+export const usedSequenceIds = async (projectRoot) => {
   const ids = new Set();
   const visitDirectories = async (directory) => {
     if (!await exists(directory)) return;
@@ -85,6 +85,11 @@ const usedSequenceIds = async (projectRoot) => {
   };
   for (const directory of [path.join(projectRoot, 'library'), path.join(projectRoot, 'sources')]) {
     await visitDirectories(directory);
+  }
+  const viewerIndex = path.join(projectRoot, 'catalog', 'viewer-index.json');
+  if (await exists(viewerIndex)) {
+    const index = JSON.parse((await readFile(viewerIndex, 'utf8')).replace(/^\uFEFF/, ''));
+    for (const entry of index.entries ?? []) if (/^seq-\d{4}$/.test(entry.sequenceId)) ids.add(entry.sequenceId);
   }
   return ids;
 };
