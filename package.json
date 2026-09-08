@@ -1,0 +1,16 @@
+{
+  "name": "wangchuan-remotion-shot-library",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "viewer": "node viewer/server.mjs",
+    "viewer:register": "node viewer/register.mjs",
+    "source:import": "node skills/shot-library-replication/scripts/import-source.mjs",
+    "privacy:check": "node scripts/check-public.mjs",
+    "test": "node --test tests/*.test.mjs"
+  }
+}
