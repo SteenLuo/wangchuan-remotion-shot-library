@@ -9,6 +9,8 @@ node viewer/server.mjs --library-root "/path/to/my-library" --port 8848
 
 服务只监听 `127.0.0.1`，通过网页搜索和观看本地成片。启动无需额外 npm 包。FFmpeg 仅用于按需生成缩略图，缓存写入所选镜头目录的 `.cache/shot-viewer/`。视频与原始记录保持不变。
 
+点击镜头图片后，详情中的视频立即播放，切换观看版本也会直接播放。鼠标悬浮卡片时静音循环预览，移开后停止并恢复图片；同一时间只预览一个镜头。滚动使卡片离开画面、切换页面或打开详情时会停止悬浮预览。触屏设备使用点击播放。
+
 ## 自有成片登记
 
 `npm run viewer:register -- --id seq-0001 --title "镜头名称" --file library/my-shot.mp4` 将位于项目内的视频加入 `catalog/viewer-index.json`。重复编号拒绝覆盖；更新版本需明确编辑本地索引。路径必须在选定镜头目录内，拒绝绝对路径和逃逸目录的链接。

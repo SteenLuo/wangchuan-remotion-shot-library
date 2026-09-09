@@ -2,9 +2,27 @@ const $ = id => document.getElementById(id);
 const labels = {gate1:'保真已通过',gate2:'彩色已通过',preview:'本地预览',changed:'文件已变化'};
 let entries=[];
 let selected;
+let preview=null;
+function stopPreview(){
+  if(!preview)return;
+  const {video,button}=preview;preview=null;
+  button.classList.remove('previewing');video.pause();video.removeAttribute('src');video.load();video.remove();
+}
+function startPreview(button,thumb,version){
+  if($('detail').open||document.hidden)return;
+  stopPreview();
+  const video=document.createElement('video');
+  video.className='hover-preview';video.muted=true;video.loop=true;video.playsInline=true;video.preload='none';video.setAttribute('aria-hidden','true');
+  const current={video,button};preview=current;thumb.append(video);video.src=version.url;
+  video.addEventListener('playing',()=>{if(preview===current)button.classList.add('previewing');});
+  video.addEventListener('error',()=>{if(preview===current)stopPreview();},{once:true});
+  video.play().catch(()=>{if(preview===current)stopPreview();});
+}
+const previewVisibility=new IntersectionObserver(entries=>{for(const entry of entries)if(!entry.isIntersecting&&preview?.button===entry.target)stopPreview();});
 const el=(tag,text,className)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(className)node.className=className;return node;};
 function versionFor(shot){const status=$('status').value;return shot.versions.find(v=>v.status===status)||shot.versions[0];}
 function render(){
+  stopPreview();previewVisibility.disconnect();
   const query=$('search').value.trim().toLocaleLowerCase();
   const scene=$('scene').value,status=$('status').value;
   const visible=entries.filter(s=>(!query||[s.sequenceId,s.title,...s.tags,s.description].join(' ').toLocaleLowerCase().includes(query))&&(!scene||s.sceneType===scene)&&(!status||s.versions.some(v=>v.status===status)));
@@ -21,24 +39,32 @@ function render(){
     if(Number.isFinite(shot.durationSeconds))thumb.append(el('span',`${shot.durationSeconds.toFixed(1)} s`,'duration'));
     const meta=el('div',undefined,'card-meta');meta.append(el('span',shot.sequenceId.toUpperCase(),'number'),el('span',labels[version.status],`state ${version.status.startsWith('gate')?'approved':''}`));
     button.append(thumb,meta,el('h3',shot.title),el('div',[shot.sceneType,...shot.tags.slice(0,2)].join(' · '),'card-tags'));
-    button.addEventListener('click',()=>openShot(shot,version.id));$('grid').append(button);
+    button.addEventListener('pointerenter',event=>{if(event.pointerType==='mouse')startPreview(button,thumb,version);});
+    button.addEventListener('pointerleave',()=>{if(preview?.button===button)stopPreview();});
+    button.addEventListener('click',()=>openShot(shot,version.id));$('grid').append(button);previewVisibility.observe(button);
   }
   $('empty').hidden=visible.length>0;
   $('empty').querySelector('h2').textContent=entries.length?'没有匹配的镜头':'这里还没有镜头';
   $('empty').querySelector('p').textContent=entries.length?'换个关键词或调整筛选条件试试。':'完成复刻并登记本地成片后，就能在这里查看。公开项目不附带 WangChuan 的私人镜头和素材。';
 }
-function selectVersion(){
+function selectVersion(autoplay=false){
   const v=selected.versions.find(v=>v.id===$('version').value);
   $('player').pause();$('player').src=v.url;$('player').poster=v.poster;$('play-error').hidden=true;
   $('approval').textContent=v.status==='changed'?'文件与批准时的版本不一致，需重新核对。':v.status.startsWith('gate')?`${labels[v.status]} · 视频哈希已核对`:'这是本地预览，尚未核对用户批准。';
   $('facts').replaceChildren();
   for(const [key,value] of [['画幅',selected.width&&selected.height?`${selected.width} × ${selected.height}`:'未记录'],['文件',v.fileName],['更新',new Date(v.modifiedAt).toLocaleString('zh-CN')]])$('facts').append(el('dt',key),el('dd',value));
+  if(autoplay)$('player').play().catch(error=>{
+    if(error.name==='AbortError')return;
+    $('play-error').textContent=error.name==='NotAllowedError'?'浏览器未允许自动播放，请使用视频播放按钮。':'视频暂时无法播放，请检查文件或编码。';
+    $('play-error').hidden=false;
+  });
 }
 function openShot(shot,versionId){
+  stopPreview();
   selected=shot;$('detail-id').textContent=shot.sequenceId.toUpperCase();$('detail-title').textContent=shot.title;$('detail-desc').textContent=shot.description;
   $('detail-tags').replaceChildren(...shot.tags.map(t=>el('span',t)));
   $('version').replaceChildren(...shot.versions.map(v=>{const option=el('option',`${v.label} · ${labels[v.status]}`);option.value=v.id;return option;}));
-  $('version').value=versionId;selectVersion();$('detail').showModal();
+  $('version').value=versionId;$('detail').showModal();selectVersion(true);
 }
 async function load(){
   $('refresh').disabled=true;$('notice').textContent='正在读取本地镜头与批准记录…';
@@ -53,8 +79,10 @@ async function load(){
 }
 $('search').addEventListener('input',render);
 for(const id of ['scene','status','sort'])$(id).addEventListener('change',render);
-$('refresh').addEventListener('click',load);$('version').addEventListener('change',selectVersion);
+$('refresh').addEventListener('click',load);$('version').addEventListener('change',()=>selectVersion(true));
 $('close').addEventListener('click',()=>$('detail').close());$('detail').addEventListener('close',()=>$('player').pause());
-$('player').addEventListener('error',()=>$('play-error').hidden=false);
+$('player').addEventListener('error',()=>{$('play-error').textContent='视频暂时无法播放，请检查文件或编码。';$('play-error').hidden=false;});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopPreview();});
+window.addEventListener('blur',stopPreview);
 document.addEventListener('keydown',event=>{if(event.key==='/'&&!['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)&&!$('detail').open){event.preventDefault();$('search').focus();}});
 load();
